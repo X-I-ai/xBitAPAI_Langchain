@@ -8,12 +8,10 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import SimpleChatModel
 from langchain.schema.messages import AIMessage, BaseMessage, HumanMessage, ChatMessage, FunctionMessage, SystemMessage
 from pydantic import Field
-
 load_dotenv()
-
 logger = logging.getLogger(__name__)
 
-def _lcmessages_to_conversation(
+def _lcmessages_to_BitAPAI_conversation(
     messages: List[BaseMessage], errors="warn"
 ) -> List[Dict[str, str]]:
     """
@@ -83,7 +81,7 @@ class xChatBitAPAI(SimpleChatModel):
     """
     uids: str | int | List = Field(default=[], alias="model")
     max_retries: int = 0
-    generations_count: int = 5
+    generations_count: int = 1
     errors: Literal["raise", "warn", "ignore"] = "warn"
     return_all: bool = False
     pool_id: int = 0
@@ -116,32 +114,41 @@ class xChatBitAPAI(SimpleChatModel):
         Returns:
             The response from the API.
         """
-        if return_all:
-            self.return_all = return_all
+        self.return_all = return_all
 
         self.uids = self._safe_uids_list(self.uids) + self._safe_uids_list(
             uids
         )
 
         BitAPAI_API_payload = {
-            "conversation": _lcmessages_to_conversation(
+            "conversation": _lcmessages_to_BitAPAI_conversation(
                 messages if isinstance(messages, List) else [messages],
                 errors=self.errors,
             ),
             "uids": self.uids,
             "count": self.generations_count,
-            "pool_id": kwargs.get("pool_id") if kwargs.get("pool_id") else None,
+            "pool_id": kwargs.get("pool_id") if (kwargs.get("pool_id") and kwargs["pool_id"] > 0) else None,
             "return_all": str(return_all).lower(),
         }
-
         payload = json.dumps(BitAPAI_API_payload)
 
         headers = {"Content-Type": "application/json", "X-API-KEY": self.bitAPAI_key}
         conn = http.client.HTTPSConnection("api.bitapai.io")
+
         conn.request("POST", "/text", payload, headers)
+
         res = conn.getresponse()
+
         data = res.read()
-        return data.decode("utf-8")
+        
+        data_dict = json.loads(data.decode("utf-8"))
+
+        final_output = {}
+        for i, each_response_data in enumerate(data_dict["response_data"]):
+             final_output[f"{i}"]=each_response_data.get("response")
+        
+        return json.dumps(final_output) or str(data_dict)
+
 
     def _safe_uids_list(
         self, content: Union[List[Union[str, int]], str, int]
@@ -193,4 +200,3 @@ class xChatBitAPAI(SimpleChatModel):
     def _llm_type(self) -> str:
         """Return type of chat model."""
         return "BitAPAI-chat"
-
