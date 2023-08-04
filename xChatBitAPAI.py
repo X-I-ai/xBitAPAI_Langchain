@@ -80,7 +80,7 @@ def _lcmessages_to_conversation(
 
 class xChatBitAPAI(SimpleChatModel):
     """
-    This is the Admiral KERC's LangChain component for Bittensor's new API. It's like a translator between you and the BitAPAI chat model.
+    This is the Admiral KΞRC's LangChain component for Bittensor's new API. It's like a translator between you and the BitAPAI chat model.
 
     Attributes:
         uids: [...]
